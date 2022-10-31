@@ -38,8 +38,6 @@ teardown() {
   for i in $FOLDER_IDS; do
     http --ignore-stdin -b -a ${user}:${APP_PASSWORD} DELETE ${BASE_URLv1}/folders/$i > /dev/null
   done
-
-  
 }
 
 @test "[$TESTSUITE] Test simple update" {
@@ -73,6 +71,55 @@ teardown() {
   # Check that they are not equal but that they match partially.
   assert_not_equal "${ID_LIST1[*]}" "${ID_LIST2[*]}"
   assert_output --partial "${ID_LIST1[*]}"
+}
+
+@test "[$TESTSUITE] Test purge with small feed" {
+  # Generate Feed with 210 items.
+  php ${BATS_TEST_DIRNAME}/../test_helper/php-feed-generator/feed-generator.php -a 50 -s 0 -f ${BATS_TEST_DIRNAME}/../test_helper/feeds/test.xml
+  # Create Feed
+  FEEDID=$(http --ignore-stdin -b -a ${user}:${APP_PASSWORD} POST ${BASE_URLv1}/feeds url=$TEST_FEED | grep -Po '"id":\K([0-9]+)')
+
+  # Trigger Update
+  php ${BATS_TEST_DIRNAME}/../test_helper/php-feed-generator/feed-generator.php -a 50 -s 50 -f ${BATS_TEST_DIRNAME}/../test_helper/feeds/test.xml
+  http --ignore-stdin -b -a ${user}:${APP_PASSWORD} GET ${BASE_URLv1}/feeds/update userId=${user} feedId=$FEEDID
+
+  # Trigger Update
+  php ${BATS_TEST_DIRNAME}/../test_helper/php-feed-generator/feed-generator.php -a 50 -s 100 -f ${BATS_TEST_DIRNAME}/../test_helper/feeds/test.xml
+  http --ignore-stdin -b -a ${user}:${APP_PASSWORD} GET ${BASE_URLv1}/feeds/update userId=${user} feedId=$FEEDID
+
+  # Trigger Update
+  php ${BATS_TEST_DIRNAME}/../test_helper/php-feed-generator/feed-generator.php -a 50 -s 150 -f ${BATS_TEST_DIRNAME}/../test_helper/feeds/test.xml
+  http --ignore-stdin -b -a ${user}:${APP_PASSWORD} GET ${BASE_URLv1}/feeds/update userId=${user} feedId=$FEEDID
+
+  # Trigger Update
+  php ${BATS_TEST_DIRNAME}/../test_helper/php-feed-generator/feed-generator.php -a 50 -s 200 -f ${BATS_TEST_DIRNAME}/../test_helper/feeds/test.xml
+  http --ignore-stdin -b -a ${user}:${APP_PASSWORD} GET ${BASE_URLv1}/feeds/update userId=${user} feedId=$FEEDID
+
+  # Get Items
+  ID_LIST=($(http --ignore-stdin -b -a ${user}:${APP_PASSWORD} GET ${BASE_URLv1}/items | grep -Po '"id":\K([0-9]+)' | tr '\n' ' '))
+
+  # get biggest item ID
+  max=${ID_LIST[0]}
+  for n in "${ID_LIST[@]}" ; do
+      ((n > max)) && max=$n
+  done
+  
+  # mark all items of feed as read, returns nothing
+  STATUS_CODE=$(http --ignore-stdin -hdo /tmp/body -a ${user}:${APP_PASSWORD} PUT ${BASE_URLv1}/feeds/$FEEDID/read newestItemId="$max" 2>&1| grep -Po '(?<=HTTP\/1\.1 )[0-9]{3}(?= OK)')
+  
+  # cleanup, purge items
+  http --ignore-stdin -b -a ${user}:${APP_PASSWORD} GET ${BASE_URLv1}/cleanup/after-update
+
+  # Get unread Items, should be empty
+  output="$(http --ignore-stdin -b -a ${user}:${APP_PASSWORD} GET ${BASE_URLv1}/items getRead=false | grep -Po '"id":\K([0-9]+)' | tr '\n' ' ')"
+
+  # Get all items, also read items
+  ID_LIST2=($(http --ignore-stdin -b -a ${user}:${APP_PASSWORD} GET ${BASE_URLv1}/items | grep -Po '"id":\K([0-9]+)' | tr '\n' ' '))
+
+  assert_equal $STATUS_CODE 200
+  # check if amount is as expected
+  assert_equal "${#ID_LIST2[@]}" 200
+  assert_output ""
 }
 
 @test "[$TESTSUITE] Test purge with more items than default limit 200" {
