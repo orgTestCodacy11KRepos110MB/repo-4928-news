@@ -62,7 +62,7 @@ jobs:
         working-directory: ../server
         run: composer install -d apps/news/tests/test_helper/php-feed-generator
 
-      - name: Run API tests
+      - name: Run Updater tests
         working-directory: ../server
         run: |
           php -S localhost:8080 &> /tmp/webserver.log &
@@ -72,38 +72,9 @@ jobs:
 
           cd ${{ github.workspace }}/../server
                   
-          bats apps/news/tests/api
+          bats apps/news/tests/updater
 
           # Kill php server
           kill %1
           kill %2
-
-      - name: Setup problem matchers for PHP
-        run: echo "::add-matcher::${{ runner.tool_cache }}/php.json"
-
-      - name: Functional tests maintenance
-        working-directory: ../server
-        run: |
-          ./occ maintenance:repair
-
-      - name: Functional tests
-        working-directory: ../server
-        run: |
-          cd apps/news/tests/test_helper/feeds && php -S localhost:8090 &> /tmp/feedserver.log &
-
-          sleep 2
-
-          cd ${{ github.workspace }}/../server
-                  
-          bats apps/news/tests/command
-
-          kill %1
-
-      - name: Prep PHP tests
-        working-directory: ../server/apps/news
-        run: make php-test-dependencies
-
-      - name: Feed tests
-        working-directory: ../server/apps/news
-        run: make feed-test
 

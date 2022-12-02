@@ -156,7 +156,7 @@ teardown() {
   assert_output ""
 }
 
-@test "[$TESTSUITE] Test Update and pruge with feed item>200; items<200"{
+@test "[$TESTSUITE] Test Update and pruge with feed item>200; items<200" {
   # Generate Feed with 210 items.
   php ${BATS_TEST_DIRNAME}/../test_helper/php-feed-generator/feed-generator.php -a 210 -f ${BATS_TEST_DIRNAME}/../test_helper/feeds/test.xml
   # Create Feed
