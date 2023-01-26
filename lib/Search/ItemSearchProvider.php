@@ -3,8 +3,9 @@ declare(strict_types=1);
 
 namespace OCA\News\Search;
 
-use OCA\News\Service\FeedServiceV2;
 use OCA\News\Service\ItemServiceV2;
+use OCA\News\AppInfo\Application;
+use OCA\News\Db\ListType;
 use OCP\IL10N;
 use OCP\IURLGenerator;
 use OCP\IUser;
@@ -26,7 +27,7 @@ class ItemSearchProvider implements IProvider
     /** @var IURLGenerator */
     private $urlGenerator;
 
-    /** @var FeedServiceV2 */
+    /** @var ItemServiceV2 */
     private $service;
 
     public function __construct(IL10N $l10n, IURLGenerator $urlGenerator, ItemServiceV2 $service)
@@ -48,9 +49,9 @@ class ItemSearchProvider implements IProvider
 
     public function getOrder(string $route, array $routeParameters): int
     {
-        if ($route === 'news.page.index') {
+        if (strpos($route, Application::NAME . '.') === 0) {
             // Active app, prefer my results
-            return -1;
+            return 2;
         }
 
         return 65;
@@ -71,22 +72,28 @@ class ItemSearchProvider implements IProvider
     public function search(IUser $user, ISearchQuery $query): SearchResult
     {
         $list = [];
-        $term = strtolower($query->getTerm());
+        $offset = (int) ($query->getCursor() ?? 0);
+        $limit = $query->getLimit();
 
-        foreach ($this->service->findAllForUser($user->getUID()) as $item) {
-            if (strpos(strtolower($item->getTitle()), $term) === false) {
-                continue;
-            }
+        $search_result = $this->service->findAllWithFilters($user->getUID(), ListType::ALL_ITEMS, $limit, $offset, false, [$query->getTerm()]);
 
+        $last = end($search_result);
+        if ($last === false) {
+            return SearchResult::complete(
+                $this->l10n->t('News'),
+                []
+            );
+        }
+
+        foreach ($search_result as $item) {
             $list[] = new SearchResultEntry(
                 $this->urlGenerator->imagePath('core', 'filetypes/text.svg'),
                 $item->getTitle(),
                 $this->strip_truncate($item->getBody(), 50),
                 $this->urlGenerator->linkToRoute('news.page.index') . '#/items/feeds/' . $item->getFeedId()
             );
-
         }
 
-        return SearchResult::complete($this->l10n->t('News'), $list);
+        return SearchResult::paginated($this->l10n->t('News'), $list, $last->getId());
     }
 }
