@@ -53,7 +53,7 @@ class ItemSearchProvider implements IProvider
             return -1;
         }
 
-        return 50;
+        return 65;
     }
 
     private function strip_truncate(string $string, int $length=20): string {
@@ -82,9 +82,9 @@ class ItemSearchProvider implements IProvider
                 $this->urlGenerator->imagePath('core', 'filetypes/text.svg'),
                 $item->getTitle(),
                 $this->strip_truncate($item->getBody(), 50),
-                $item->getUrl()
+                $this->urlGenerator->linkToRoute('news.page.index') . '#/items/feeds/' . $item->getFeedId()
             );
-            //$this->urlGenerator->linkToRoute('news.page.index') . '#/items/feeds/' . $feed->getId()
+
         }
 
         return SearchResult::complete($this->l10n->t('News'), $list);
