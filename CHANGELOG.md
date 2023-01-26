@@ -6,7 +6,8 @@ The format is mostly based on [Keep a Changelog](https://keepachangelog.com/en/1
 ## [21.x.x]
 ### Changed
 - Drop support for Nextcloud 23 (#2077 )
--  Make the "open" keyboard shortcut work faster (#2080)
+- Make the "open" keyboard shortcut work faster (#2080)
+- Implemented search for articles. (#2075)
 
 ### Fixed
 
