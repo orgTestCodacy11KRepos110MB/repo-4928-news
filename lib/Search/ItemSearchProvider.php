@@ -57,13 +57,14 @@ class ItemSearchProvider implements IProvider
         return 65;
     }
 
-    private function strip_truncate(string $string, int $length=20): string {
+    private function stripTruncate(string $string, int $length = 50): string
+    {
         $string = strip_tags(trim($string));
       
-        if(strlen($string) > $length) {
-          $string = wordwrap($string, $length);
-          $string = explode("\n", $string, 2);
-          $string = $string[0];
+        if (strlen($string) > $length) {
+            $string = wordwrap($string, $length);
+            $string = explode("\n", $string, 2);
+            $string = $string[0];
         }
       
         return $string;
@@ -75,7 +76,14 @@ class ItemSearchProvider implements IProvider
         $offset = (int) ($query->getCursor() ?? 0);
         $limit = $query->getLimit();
 
-        $search_result = $this->service->findAllWithFilters($user->getUID(), ListType::ALL_ITEMS, $limit, $offset, false, [$query->getTerm()]);
+        $search_result = $this->service->findAllWithFilters(
+            $user->getUID(),
+            ListType::ALL_ITEMS,
+            $limit,
+            $offset,
+            false,
+            [$query->getTerm()]
+        );
 
         $last = end($search_result);
         if ($last === false) {
@@ -85,11 +93,13 @@ class ItemSearchProvider implements IProvider
             );
         }
 
+        $icon = $this->urlGenerator->imagePath('core', 'filetypes/text.svg');
+        
         foreach ($search_result as $item) {
             $list[] = new SearchResultEntry(
-                $this->urlGenerator->imagePath('core', 'filetypes/text.svg'),
+                $icon,
                 $item->getTitle(),
-                $this->strip_truncate($item->getBody(), 50),
+                $this->stripTruncate($item->getBody(), 50),
                 $this->urlGenerator->linkToRoute('news.page.index') . '#/items/feeds/' . $item->getFeedId()
             );
         }
