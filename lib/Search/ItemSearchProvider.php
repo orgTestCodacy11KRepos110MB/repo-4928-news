@@ -51,7 +51,7 @@ class ItemSearchProvider implements IProvider
     {
         if (strpos($route, Application::NAME . '.') === 0) {
             // Active app, prefer my results
-            return 2;
+            return 1;
         }
 
         return 65;
