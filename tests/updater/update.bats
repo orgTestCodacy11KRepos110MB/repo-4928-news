@@ -179,5 +179,31 @@ teardown() {
 
   assert_equal "${FIRST_UPDATE}" ""
 
-  ##TODO
+  # Generate feed "update"
+  php ${BATS_TEST_DIRNAME}/../test_helper/php-feed-generator/feed-generator.php -a 190 -s 80 -f ${BATS_TEST_DIRNAME}/../test_helper/feeds/test.xml
+  http --ignore-stdin -b -a ${user}:${APP_PASSWORD} GET ${BASE_URLv1}/feeds/update userId=${user} feedId=$FEEDID
+
+  # Get Items
+  ID_LIST=($(http --ignore-stdin -b -a ${user}:${APP_PASSWORD} GET ${BASE_URLv1}/items | grep -Po '"id":\K([0-9]+)' | tr '\n' ' '))
+
+  # get biggest item ID
+  max=${ID_LIST[0]}
+  for n in "${ID_LIST[@]}" ; do
+      ((n > max)) && max=$n
+  done
+  
+  # mark all items of feed as read, returns nothing
+  STATUS_CODE=$(http --ignore-stdin -hdo /tmp/body -a ${user}:${APP_PASSWORD} PUT ${BASE_URLv1}/feeds/$FEEDID/read newestItemId="$max" 2>&1| grep -Po '(?<=HTTP\/1\.1 )[0-9]{3}(?= OK)')
+
+  SECOND_UPDATE="$(http --ignore-stdin -b -a ${user}:${APP_PASSWORD} GET ${BASE_URLv1}/items getRead=false | grep -Po '"id":\K([0-9]+)' | tr '\n' ' ')"
+
+  assert_equal "${SECOND_UPDATE}" ""
+
+  # cleanup, purge items
+  http --ignore-stdin -b -a ${user}:${APP_PASSWORD} GET ${BASE_URLv1}/cleanup/after-update
+
+  # Get all items, also read items
+  READ_ITEMS=($(http --ignore-stdin -b -a ${user}:${APP_PASSWORD} GET ${BASE_URLv1}/items | grep -Po '"id":\K([0-9]+)' | tr '\n' ' '))
+
+  assert_equal "${#READ_ITEMS[@]}" 200
 }
